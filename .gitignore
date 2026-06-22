@@ -1,0 +1,22 @@
+# ── Dependências ──
+node_modules/
+
+# ── Arquivos de Ambiente (MUITO IMPORTANTE) ──
+# Impede que suas chaves do Supabase e chaves privadas de carteira vazem
+.env
+
+# ── Artefatos do Frontend (Vite) ──
+dist/
+dist-ssr/
+build/
+
+# ── Artefatos do Smart Contract (Hardhat) ──
+artifacts/
+cache/
+coverage/
+typechain-types/
+
+# ── Logs ──
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
