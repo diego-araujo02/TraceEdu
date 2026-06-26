@@ -2,7 +2,13 @@
 // Após rodar `npm run deploy:local`, cole o endereço gerado em deployment.json aqui.
 // ──────────────────────────────────────────────────────────────────────────
 
-export const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000";
+import { DEPLOYMENT } from "./deployment";
+
+// Prioridade: .env (VITE_CONTRACT_ADDRESS) > deployment.js (gerado no deploy).
+export const CONTRACT_ADDRESS =
+  import.meta.env.VITE_CONTRACT_ADDRESS ||
+  DEPLOYMENT.address ||
+  "0x0000000000000000000000000000000000000000";
 
 // ABI em formato Human-Readable (ethers.js v6)
 // Mantida aqui para facilitar leitura. Após `npm run compile`, você pode
@@ -12,7 +18,7 @@ export const CONTRACT_ABI = [
   "event VerbaRegistrada(uint256 indexed id, address indexed escola, uint256 valor, string finalidade, uint256 timestamp)",
   "event CotacaoRegistrada(uint256 indexed verbaId, uint256 numero, string fornecedor, uint256 valor, uint256 timestamp)",
   "event CompraAprovada(uint256 indexed verbaId, string fornecedorVencedor, uint256 valorAprovado, uint256 timestamp)",
-  "event NotaFiscalAnexada(uint256 indexed verbaId, bytes32 hashDocumento, uint256 timestamp)",
+  "event NotaFiscalAnexada(uint256 indexed verbaId, bytes32 hashDocumento, string chaveNFe, string cnpjEmitente, uint256 valorNFe, uint256 timestamp)",
   "event EntregaConfirmada(uint256 indexed verbaId, uint256 timestamp)",
   "event VerbaAuditada(uint256 indexed verbaId, address auditor, uint256 timestamp)",
   "event EscolaAdicionada(address indexed escola)",
@@ -21,9 +27,12 @@ export const CONTRACT_ABI = [
   // ── Leitura ──────────────────────────────────────────────────────────────
   "function owner() view returns (address)",
   "function totalVerbas() view returns (uint256)",
+  "function minCotacoes() view returns (uint256)",
   "function isEscola(address) view returns (bool)",
   "function isAuditor(address) view returns (bool)",
-  "function verbas(uint256) view returns (uint256 id, address escola, uint256 valor, string finalidade, uint8 etapaAtual, uint256 criadaEm, string fornecedorVencedor, uint256 valorAprovado, bytes32 hashNotaFiscal, uint256 notaAnexadaEm, bool auditado)",
+  "function isEscolaStatus(address) view returns (bool)",
+  "function isAuditorStatus(address) view returns (bool)",
+  "function verbas(uint256) view returns (uint256 id, address escola, uint256 valor, string finalidade, uint8 etapaAtual, uint256 criadaEm, string fornecedorVencedor, uint256 valorAprovado, bytes32 hashNotaFiscal, string chaveNFe, string cnpjEmitente, uint256 valorNFe, uint256 notaAnexadaEm, bool auditado)",
   "function getCotacoes(uint256 verbaId) view returns (tuple(string fornecedor, uint256 valor, string descricao, uint256 timestamp)[])",
   "function getVerbasEscola(address escola) view returns (uint256[])",
   "function getNumeroCotacoes(uint256 verbaId) view returns (uint256)",
@@ -32,7 +41,7 @@ export const CONTRACT_ABI = [
   "function registrarVerba(uint256 valor, string calldata finalidade) returns (uint256)",
   "function registrarCotacao(uint256 verbaId, string calldata fornecedor, uint256 valor, string calldata descricao)",
   "function aprovarCompra(uint256 verbaId, string calldata fornecedorVencedor, uint256 valorAprovado)",
-  "function anexarNotaFiscal(uint256 verbaId, bytes32 hashDocumento)",
+  "function anexarNotaFiscal(uint256 verbaId, bytes32 hashDocumento, string chaveNFe, string cnpjEmitente, uint256 valorNFe)",
   "function confirmarEntrega(uint256 verbaId)",
 
   // ── Escrita — auditor ─────────────────────────────────────────────────────
@@ -41,6 +50,7 @@ export const CONTRACT_ABI = [
   // ── Escrita — administração ───────────────────────────────────────────────
   "function addEscola(address escola)",
   "function addAuditor(address auditor)",
+  "function setMinCotacoes(uint256 novoMinimo)",
 ];
 
 // Mapeamento de etapa (uint8) → rótulo e cor

@@ -8,6 +8,22 @@ export class TraceEduService {
   }
 
   // ── Leitura (View) ────────────────────────────────────────────────────────
+  async owner() {
+    return await this.contract.owner();
+  }
+
+  async totalVerbas() {
+    return await this.contract.totalVerbas();
+  }
+
+  async minCotacoes() {
+    return await this.contract.minCotacoes();
+  }
+
+  async getNumeroCotacoes(verbaId) {
+    return await this.contract.getNumeroCotacoes(verbaId);
+  }
+
   async isEscolaStatus(address) {
     return await this.contract.isEscolaStatus(address);
   }
@@ -44,8 +60,14 @@ export class TraceEduService {
     return await tx.wait();
   }
 
-  async anexarNotaFiscal(verbaId, hashDocumento) {
-    const tx = await this.contract.anexarNotaFiscal(verbaId, hashDocumento);
+  async anexarNotaFiscal(verbaId, hashDocumento, chaveNFe, cnpjEmitente, valorNFe) {
+    const tx = await this.contract.anexarNotaFiscal(
+      verbaId,
+      hashDocumento,
+      chaveNFe,
+      cnpjEmitente,
+      valorNFe
+    );
     return await tx.wait();
   }
 
@@ -56,6 +78,17 @@ export class TraceEduService {
 
   async auditarVerba(verbaId) {
     const tx = await this.contract.auditarVerba(verbaId);
+    return await tx.wait();
+  }
+
+  // ── Escrita — administração ────────────────────────────────────────────────
+  async addEscola(address) {
+    const tx = await this.contract.addEscola(address);
+    return await tx.wait();
+  }
+
+  async addAuditor(address) {
+    const tx = await this.contract.addAuditor(address);
     return await tx.wait();
   }
 }

@@ -5,6 +5,11 @@ contract TraceEdu {
     address public owner;
     uint256 public totalVerbas;
 
+    // Mínimo de cotações exigido para aprovar uma compra (pesquisa de preços).
+    // Parametrizável: a Lei 14.133/2021 tem nuances por modalidade/valor, então
+    // o número não fica cravado no código — o admin pode ajustá-lo.
+    uint256 public minCotacoes = 3;
+
     // Controle de acesso
     mapping(address => bool) public isEscola;
     mapping(address => bool) public isAuditor;
@@ -29,6 +34,9 @@ contract TraceEdu {
         string fornecedorVencedor;
         uint256 valorAprovado;
         bytes32 hashNotaFiscal;
+        string chaveNFe;       // chave de acesso (44 dígitos) — âncora p/ reconsulta na SEFAZ
+        string cnpjEmitente;   // fornecedor de verdade, segundo a SEFAZ
+        uint256 valorNFe;      // valor total da nota, conforme a SEFAZ
         uint256 notaAnexadaEm;
         bool auditado;
     }
@@ -42,11 +50,12 @@ contract TraceEdu {
     event VerbaRegistrada(uint256 indexed id, address indexed escola, uint256 valor, string finalidade, uint256 timestamp);
     event CotacaoRegistrada(uint256 indexed verbaId, uint256 numero, string fornecedor, uint256 valor, uint256 timestamp);
     event CompraAprovada(uint256 indexed verbaId, string fornecedorVencedor, uint256 valorAprovado, uint256 timestamp);
-    event NotaFiscalAnexada(uint256 indexed verbaId, bytes32 hashDocumento, uint256 timestamp);
+    event NotaFiscalAnexada(uint256 indexed verbaId, bytes32 hashDocumento, string chaveNFe, string cnpjEmitente, uint256 valorNFe, uint256 timestamp);
     event EntregaConfirmada(uint256 indexed verbaId, uint256 timestamp);
     event VerbaAuditada(uint256 indexed verbaId, address auditor, uint256 timestamp);
     event EscolaAdicionada(address indexed escola);
     event AuditorAdicionado(address indexed auditor);
+    event MinCotacoesAtualizado(uint256 novoMinimo);
 
     // ── Modificadores ────────────────────────────────────────────────────────
     modifier onlyOwner() {
@@ -85,6 +94,12 @@ contract TraceEdu {
         emit AuditorAdicionado(auditor);
     }
 
+    function setMinCotacoes(uint256 novoMinimo) external onlyOwner {
+        require(novoMinimo > 0, "Minimo deve ser maior que zero");
+        minCotacoes = novoMinimo;
+        emit MinCotacoesAtualizado(novoMinimo);
+    }
+
     // ── Lógica Principal (Diretor da Escola) ─────────────────────────────────
     
     function registrarVerba(uint256 valor, string calldata finalidade) external onlyEscola returns (uint256) {
@@ -101,6 +116,9 @@ contract TraceEdu {
             fornecedorVencedor: "",
             valorAprovado: 0,
             hashNotaFiscal: 0,
+            chaveNFe: "",
+            cnpjEmitente: "",
+            valorNFe: 0,
             notaAnexadaEm: 0,
             auditado: false
         });
@@ -131,7 +149,7 @@ contract TraceEdu {
     function aprovarCompra(uint256 verbaId, string calldata fornecedorVencedor, uint256 valorAprovado) external onlyEscola donoDaVerba(verbaId) {
         Verba storage v = verbas[verbaId];
         require(v.etapaAtual == Etapa.Cotacoes, "Faltam cotacoes ou compra ja aprovada");
-        require(cotacoesPorVerba[verbaId].length >= 3, "Minimo de 3 cotacoes exigido pela licitacao");
+        require(cotacoesPorVerba[verbaId].length >= minCotacoes, "Minimo de cotacoes nao atingido");
         require(valorAprovado <= v.valor, "Valor aprovado excede a verba original");
 
         v.fornecedorVencedor = fornecedorVencedor;
@@ -141,15 +159,27 @@ contract TraceEdu {
         emit CompraAprovada(verbaId, fornecedorVencedor, valorAprovado, block.timestamp);
     }
 
-    function anexarNotaFiscal(uint256 verbaId, bytes32 hashDocumento) external onlyEscola donoDaVerba(verbaId) {
+    function anexarNotaFiscal(
+        uint256 verbaId,
+        bytes32 hashDocumento,
+        string calldata chaveNFe,
+        string calldata cnpjEmitente,
+        uint256 valorNFe
+    ) external onlyEscola donoDaVerba(verbaId) {
         Verba storage v = verbas[verbaId];
         require(v.etapaAtual == Etapa.Aprovada, "Compra ainda nao aprovada ou nota ja anexada");
+        require(bytes(chaveNFe).length == 44, "Chave NF-e invalida (44 digitos)");
+        // Cruza o valor OFICIAL da SEFAZ com o que foi aprovado na licitacao
+        require(valorNFe <= v.valorAprovado, "Nota fiscal acima do valor aprovado");
 
         v.hashNotaFiscal = hashDocumento;
+        v.chaveNFe = chaveNFe;
+        v.cnpjEmitente = cnpjEmitente;
+        v.valorNFe = valorNFe;
         v.notaAnexadaEm = block.timestamp;
         v.etapaAtual = Etapa.NotaAnexada;
 
-        emit NotaFiscalAnexada(verbaId, hashDocumento, block.timestamp);
+        emit NotaFiscalAnexada(verbaId, hashDocumento, chaveNFe, cnpjEmitente, valorNFe, block.timestamp);
     }
 
     function confirmarEntrega(uint256 verbaId) external onlyEscola donoDaVerba(verbaId) {
@@ -165,8 +195,9 @@ contract TraceEdu {
 
     function auditarVerba(uint256 verbaId) external onlyAuditor {
         Verba storage v = verbas[verbaId];
+        // A guarda de etapa já barra a dupla auditoria: após auditar, a etapa
+        // vira Auditado, então a verba não está mais em EntregaConfirmada.
         require(v.etapaAtual == Etapa.EntregaConfirmada, "Verba ainda nao teve entrega confirmada pela escola");
-        require(!v.auditado, "Verba ja auditada");
 
         v.auditado = true;
         v.etapaAtual = Etapa.Auditado;

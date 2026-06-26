@@ -21,24 +21,33 @@ async function main() {
 
   console.log("✅  Contrato implantado em:", address);
   console.log("    O deployer é automaticamente auditor.");
-  console.log("");
-  console.log("📋  Próximos passos:");
-  console.log("    1. Copie o endereço acima para:");
-  console.log("       frontend/src/constants/contract.js  →  CONTRACT_ADDRESS");
-  console.log("    2. Registre escolas:  await traceEdu.addEscola('0x...')");
-  console.log("    3. Registre auditores extras: await traceEdu.addAuditor('0x...')");
   console.log("═══════════════════════════════════════════");
 
-  // Salva o endereço para o frontend usar
+  const deployedAt = new Date().toISOString();
+
+  // 1) Salva o endereço na raiz (referência / histórico)
   const output = {
     address,
     network:    hre.network.name,
     deployer:   deployer.address,
-    deployedAt: new Date().toISOString(),
+    deployedAt,
   };
-
   writeFileSync("./deployment.json", JSON.stringify(output, null, 2));
   console.log("💾  Endereço salvo em deployment.json");
+
+  // 2) Gera o módulo que o frontend importa — sem precisar colar à mão
+  const frontendModule =
+    `// ⚠️ Arquivo gerado automaticamente pelo deploy (scripts/deploy.js).\n` +
+    `// Não edite à mão — o deploy sobrescreve o endereço aqui.\n` +
+    `// Ordem de prioridade no app: VITE_CONTRACT_ADDRESS (.env) > este arquivo.\n` +
+    `export const DEPLOYMENT = {\n` +
+    `  address: "${address}",\n` +
+    `  network: "${hre.network.name}",\n` +
+    `  deployedAt: "${deployedAt}",\n` +
+    `};\n`;
+  writeFileSync("./frontend/src/constants/deployment.js", frontendModule);
+  console.log("💾  Endereço injetado em frontend/src/constants/deployment.js");
+  console.log("═══════════════════════════════════════════");
 }
 
 main().catch((err) => {

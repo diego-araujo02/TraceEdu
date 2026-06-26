@@ -1,18 +1,48 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from "react-router-dom";
+import ConnectWallet from "./ConnectWallet";
+import { useRole } from "../../hooks/useRole";
+
+const linkBase =
+  "font-semibold text-sm transition-colors px-1 py-1 border-b-2 border-transparent";
+
+function navClass({ isActive }, color) {
+  return `${linkBase} ${
+    isActive ? `${color} border-current` : "text-slate-500 hover:text-slate-800"
+  }`;
+}
 
 export default function Header() {
+  const { isOwner } = useRole();
+
   return (
-    <header style={{ padding: '1rem 2rem', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#111827' }}>TraceEdu</h1>
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Transparência Escolar On-chain</p>
+    <header className="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-50">
+      <div className="flex items-center gap-8">
+        <Link to="/" className="flex flex-col leading-tight">
+          <span className="text-xl font-extrabold text-slate-900">
+            Trace<span className="text-blue-600">Edu</span>
+          </span>
+          <span className="text-xs text-slate-400">Transparência Escolar On-chain</span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-6">
+          <NavLink to="/" end className={(s) => navClass(s, "text-slate-800")}>
+            Início
+          </NavLink>
+          <NavLink to="/diretor" className={(s) => navClass(s, "text-blue-600")}>
+            Área do Diretor
+          </NavLink>
+          <NavLink to="/auditoria" className={(s) => navClass(s, "text-emerald-600")}>
+            Auditoria
+          </NavLink>
+          {isOwner && (
+            <NavLink to="/admin" className={(s) => navClass(s, "text-indigo-600")}>
+              Admin
+            </NavLink>
+          )}
+        </nav>
       </div>
-      <nav style={{ display: 'flex', gap: '1.5rem' }}>
-        <Link to="/" style={{ textDecoration: 'none', color: '#374151', fontWeight: 'bold' }}>Home</Link>
-        <Link to="/diretor" style={{ textDecoration: 'none', color: '#2563eb', fontWeight: 'bold' }}>Área do Diretor</Link>
-        <Link to="/auditoria" style={{ textDecoration: 'none', color: '#059669', fontWeight: 'bold' }}>Auditoria</Link>
-      </nav>
+
+      <ConnectWallet />
     </header>
   );
 }
